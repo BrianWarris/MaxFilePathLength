@@ -32,12 +32,14 @@ namespace MaxFilePathLength
             string regKeyPath = "";
             string excludedTypes = "CDFS";
             bool supportsLongFilePaths = false;
+            bool keepFileCreated = false;
             AppSettingsReader asr = new AppSettingsReader();
             GetConfigValue<int>(asr, "MaxFolderLength", ref maxFolderLength, 248);
             GetConfigValue<int>(asr, "MaxDirLength", ref maxDirectoryLength, 32);
             GetConfigValue<int>(asr, "InitialFilePathLength", ref initialFilePathLength, 260);
             GetConfigValue<string>(asr, "RegistryPath", ref regKeyPath, @"HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled");
             GetConfigValue<string>(asr, "ExcludedTypes", ref excludedTypes, "CDFS");
+            GetConfigValue<Boolean>(asr, "KeepFileCreated", ref keepFileCreated, false);
             ReportOnRegistrySetting(regKeyPath, out supportsLongFilePaths);
             System.Globalization.CultureInfo modCulture = new System.Globalization.CultureInfo("en-US");
             NumberFormatInfo number = modCulture.NumberFormat;
@@ -50,7 +52,7 @@ namespace MaxFilePathLength
                 {
                     string readyState = (die.IsReady) ? "Ready" : "NotReady";
                     Console.Out.WriteLine($"See drive {die.Name,-7} {die.VolumeLabel,-10}  {die.DriveFormat,-5} {die.TotalSize.ToString("N", number),18} total; {die.TotalFreeSpace.ToString("N", number),15} free; {readyState,-8} {die.DriveType,-10}");
-                    int maxLen = GetMaximumEmpiricalPathLength(die.Name, maxDirectoryLength, maxFolderLength, initialFilePathLength, supportsLongFilePaths);
+                    int maxLen = GetMaximumEmpiricalPathLength(die.Name, maxDirectoryLength, maxFolderLength, initialFilePathLength, supportsLongFilePaths, keepFileCreated);
                     Console.Out.WriteLine($"Maximum limit for a file path on this drive was determined to be {maxLen} characters.");
                 }
             }
@@ -65,7 +67,7 @@ namespace MaxFilePathLength
         /// <param name="supportsLongFilePaths">bool - evaluated and passed by the caller</param>
         /// <returns>int - the empirically evaluated maximum file path length</returns>
         static int GetMaximumEmpiricalPathLength(string driveToTest, int maxDirectoryLength, int maxFolderLength,
-            int initialFilePathLength, bool supportsLongFilePaths)
+            int initialFilePathLength, bool supportsLongFilePaths, bool keepFileCreated)
         {
             int rv = 0;
             int initialLengthMax = maxFolderLength - 3;// see comments in the config file
@@ -140,7 +142,7 @@ namespace MaxFilePathLength
             }
             finally
             {
-                if (! string.IsNullOrEmpty(folderToRemove) && Directory.Exists(folderToRemove))
+                if (! keepFileCreated && ! string.IsNullOrEmpty(folderToRemove) && Directory.Exists(folderToRemove))
                 {
                     Directory.Delete(folderToRemove, true);
                 }
